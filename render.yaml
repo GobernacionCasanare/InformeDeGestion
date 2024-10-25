@@ -1,0 +1,9 @@
+# render.yaml
+version: 1
+services:
+  - type: web
+    name: InformeGestion # Cambia esto por el nombre que desees para tu app
+    env: python  # Indica que tu aplicación es de tipo Python
+    buildCommand: "pip install -r requirements.txt"  # Comando para instalar dependencias
+    startCommand: "python app.py"  # Comando para iniciar tu aplicación
+    plan: free  # Indica que es un plan gratuito
