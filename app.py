@@ -1,27 +1,18 @@
-from flask import Flask, render_template, request, send_file, url_for
-from werkzeug.utils import secure_filename
+from flask import Flask, render_template, send_file
+from openpyxl import load_workbook
+from docxtpl import DocxTemplate
 import os
 import webbrowser
-from openpyxl import load_workbook
-from docxtpl import DocxTemplate, InlineImage
-from docx.shared import Mm  # Para ajustar el tamaño de la imagen
 import json
-from cx_Freeze import setup, Executable
-import sys
-
-
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['GENERATED_FOLDER'] = 'generated'  # Carpeta para los archivos generados
 app.config['SECRET_KEY'] = '39QDt7fVWUuPqLsPDAF3XkuDQEKiZkxN9z'
 
-# Página principal para subir archivos
+# Página principal para generar el informe
 @app.route('/')
 def index():
-    # Sirve el archivo index.html desde la raíz del proyecto
     return render_template('index.html')
-
 
 # Función para formatear valores según el formato de la celda en Excel
 def formatear_valor(celda):
@@ -35,52 +26,19 @@ def formatear_valor(celda):
     else:
         return celda.value  # No aplicar formato si no es numérico
 
-# Función para guardar el contexto en un archivo JSON
-def guardar_contexto(contexto):
-    with open('uploads/context.json', 'w') as f:
-        json.dump(contexto, f)
-
-# Función para cargar el contexto desde un archivo JSON
-def cargar_contexto():
-    if os.path.exists('uploads/context.json'):
-        with open('uploads/context.json', 'r') as f:
-            return json.load(f)
-    return {}
-
-# Subir archivos Excel (primera etapa)
-@app.route('/upload', methods=['POST'])
-def upload_files():
-    if 'files' not in request.files:
-        return 'No se han subido archivos.'
-
-    files = request.files.getlist('files')
-    filenames = []
-
-    # Guardar archivos Excel subidos
-    for file in files:
-        filename = secure_filename(file.filename)
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(file_path)
-        filenames.append(filename)
-    
-    # Mostrar opciones adicionales después de subir los archivos
-    return render_template("index.html", filenames=filenames, show_additional_fields=True)
-
-
-# Procesar texto, imágenes y generar archivo .docx (segunda etapa)
+# Procesar texto, imágenes y generar archivo .docx
 @app.route('/generate', methods=['POST'])
 def generate_doc():
     # Cargar la plantilla .docx
     doc = DocxTemplate('1.docx')
-    context = cargar_contexto()
+    context = {}
 
-    # Procesar archivos Excel cargados previamente
-    uploaded_files = os.listdir(app.config['UPLOAD_FOLDER'])
+    # Cargar los archivos Excel directamente desde la raíz del proyecto
+    uploaded_files = ['ejemplo1.xlsx', 'ejemplo2.xlsx']  # Especifica aquí tus archivos Excel
     for idx, filename in enumerate(uploaded_files):
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file_path = os.path.join(os.getcwd(), filename)  # Cambia el directorio si es necesario
 
         if filename.endswith('.xlsx'):
-            # Usar openpyxl para leer el archivo y obtener los formatos
             wb = load_workbook(file_path, data_only=True)
 
             # Seleccionar la hoja correspondiente
@@ -114,9 +72,6 @@ def generate_doc():
                 evidencia_default = formatear_valor(ws['A1'])  # Celda A1 con formato
                 context[f'evidencia_default_{idx}'] = evidencia_default
 
-            # Eliminar el archivo Excel subido (opcional)
-            os.remove(file_path)
-
     # Verificar el contenido del contexto para asegurarse de que todo esté correcto
     print("Contexto final:", context)
 
@@ -125,23 +80,18 @@ def generate_doc():
 
     # Guardar el nuevo archivo .docx lleno
     output_path = os.path.join(app.config['GENERATED_FOLDER'], 'informe_lleno.docx')
-    
+
     # Eliminar archivo si ya existe
     if os.path.exists(output_path):
         os.remove(output_path)
-    
+
     doc.save(output_path)
 
     # Enviar el archivo generado al cliente para su descarga
     return send_file(output_path, as_attachment=True)
 
-def cargar_contexto():
-    return {}
-
 if __name__ == '__main__':
-    webbrowser.open("http://127.0.0.1:5000") 
-    if not os.path.exists(app.config['UPLOAD_FOLDER']):
-        os.makedirs(app.config['UPLOAD_FOLDER'])
+    webbrowser.open("http://127.0.0.1:5000")
     if not os.path.exists(app.config['GENERATED_FOLDER']):
         os.makedirs(app.config['GENERATED_FOLDER'])
     app.run(debug=True, use_reloader=False, threaded=False)
