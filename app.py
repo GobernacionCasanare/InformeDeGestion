@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file, send_from_directory, session
+from flask import Flask, render_template, request, send_file, url_for
 from werkzeug.utils import secure_filename
 import os
 import webbrowser
@@ -9,6 +9,8 @@ import json
 from cx_Freeze import setup, Executable
 import sys
 
+
+
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['GENERATED_FOLDER'] = 'generated'  # Carpeta para los archivos generados
@@ -18,11 +20,8 @@ app.config['SECRET_KEY'] = '39QDt7fVWUuPqLsPDAF3XkuDQEKiZkxN9z'
 @app.route('/')
 def index():
     # Sirve el archivo index.html desde la raíz del proyecto
-    return send_from_directory(os.getcwd(), 'index.html')
+    return render_template('index.html')
 
-@app.route('/<path:filename>')
-def serve_static_files(filename):
-    return send_from_directory(os.getcwd(), filename)
 
 # Función para formatear valores según el formato de la celda en Excel
 def formatear_valor(celda):
@@ -63,9 +62,10 @@ def upload_files():
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
         filenames.append(filename)
-
+    
     # Mostrar opciones adicionales después de subir los archivos
-    return send_from_directory(os.getcwd(), 'index.html', filenames=filenames, show_additional_fields=True)
+    return render_template("index.html", filenames=filenames, show_additional_fields=True)
+
 
 # Procesar texto, imágenes y generar archivo .docx (segunda etapa)
 @app.route('/generate', methods=['POST'])
